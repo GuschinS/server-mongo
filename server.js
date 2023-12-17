@@ -24,7 +24,7 @@ app.post('/addData', async (req, res) => {
         const insertResult = await collection.insertOne(req.body);
         res.status(200).json({
             message: 'Data added successfully',
-            insertedCount: insertResult.insertedCount,
+            // insertedCount: insertResult.insertedCount,
         });
     } catch (error) {
         res.status(400).json({ error: 'Invalid JSON' });
