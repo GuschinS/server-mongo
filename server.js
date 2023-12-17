@@ -1,11 +1,12 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, 'environment', '.env') });
+
 const { MongoClient } = require("mongodb");
-const cors = require('cors');
 const http = require("http");
-require('dotenv').config();
 
 async function run() {
     // MongoDB Connection Setup
-    const uri = process.env.DB_URI; // Replace with your MongoDB Atlas URI
+    const uri = process.env.DB_URI;
 
     const client = new MongoClient(uri);
 
