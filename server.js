@@ -1,93 +1,74 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, 'environment', '.env') });
 
-const { MongoClient } = require("mongodb");
-const http = require("http");
+const express = require('express');
+const bodyParser = require('body-parser');
+const { MongoClient, ObjectId } = require('mongodb');
 
-async function run() {
-    // MongoDB Connection Setup
+const app = express();
+const port = 3000;
+
+app.use(bodyParser.json());
+
+async function connectToDatabase() {
     const uri = process.env.DB_URI;
-
     const client = new MongoClient(uri);
-
-    // Connect to MongoDB
     await client.connect();
-    const database = client.db("ddt"); // Replace with your database name
-    const collection = database.collection("data"); // Replace with your collection name
-
-    const server = http.createServer(async (req, res) => {
-        if (req.method === "POST" && req.url === "/addData") {
-            let body = '';
-
-            req.on('data', (chunk) => {
-                body += chunk.toString();
-            });
-
-            req.on('end', async () => {
-                try {
-                    const jsonData = JSON.parse(body);
-                    // Insert received data into MongoDB
-                    const insertResult = await collection.insertOne(jsonData);
-
-                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ message: 'Data added successfully', insertedCount: insertResult.insertedCount }));
-                } catch (error) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Invalid JSON' }));
-                    return;
-                }
-            });
-        } else if (req.method === "GET" && req.url === "/getData") {
-            try {
-                const query = {}; // Define your query if needed
-                const cursor = await collection.find(query);
-                const data = await cursor.toArray();
-
-                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                res.end(JSON.stringify(data));
-            } catch (error) {
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Internal Server Error' }));
-            }
-        } else if (req.method === 'GET' && req.url === '/') {
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end('<h1>Server is running successfully!</h1>');
-        }else if (req.method === 'DELETE' && req.url === '/deleteData') {
-            let body = '';
-
-            req.on('data', (chunk) => {
-                body += chunk.toString();
-            });
-            req.on('end', async () => {
-                try {
-                    const jsonData = JSON.parse(body);
-                    const { _id } = jsonData;
-
-                    if (!_id) {
-                        res.writeHead(400, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ error: 'No ID provided' }));
-                        return;
-                    }
-                    // Delete data from MongoDB by _id
-                    const deleteResult = await collection.deleteOne({ _id });
-
-                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-                    res.end(JSON.stringify({ message: 'Data deleted successfully', deletedCount: deleteResult.deletedCount }));
-                } catch (error) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Invalid JSON' }));
-                    return;
-                }
-            });
-        } else {
-            res.writeHead(404, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Not Found' }));
-        }
-    })
-
-    server.listen(3000, () => {
-        console.log('Server running at http://localhost:3000/');
-    });
+    const database = client.db('ddt');
+    return database.collection('data');
 }
 
-run().catch(console.dir);
+app.post('/addData', async (req, res) => {
+    const collection = await connectToDatabase();
+    try {
+        const insertResult = await collection.insertOne(req.body);
+        res.status(200).json({
+            message: 'Data added successfully',
+            insertedCount: insertResult.insertedCount,
+        });
+    } catch (error) {
+        res.status(400).json({ error: 'Invalid JSON' });
+    }
+});
+
+app.get('/getData', async (req, res) => {
+    const collection = await connectToDatabase();
+    try {
+        const query = {}; // Define your query if needed
+        const data = await collection.find(query).toArray();
+        res.status(200).json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.delete('/deleteData', async (req, res) => {
+    const collection = await connectToDatabase();
+    try {
+        const _id = req.body._id;
+        if (!_id) {
+            res.status(400).json({ error: 'No ID provided' });
+            return;
+        }
+
+        const deleteResult = await collection.deleteOne({_id: new ObjectId(_id)});
+        res.status(200).json({
+            message: 'Data deleted successfully',
+            deletedCount: deleteResult.deletedCount,
+        });
+    } catch (error) {
+        res.status(400).json({ error: 'Invalid JSON' });
+    }
+});
+
+// Handling OPTIONS request for CORS
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.status(200).send();
+});
+
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}/`);
+});
