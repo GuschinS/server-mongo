@@ -61,6 +61,32 @@ app.delete('/deleteData', async (req, res) => {
     }
 });
 
+app.patch('/updateData/:id', async (req, res) => {
+    const collection = await connectToDatabase();
+    try {
+        const _id = req.params.id;
+        if (!_id) {
+            res.status(400).json({ error: 'No ID provided' });
+            return;
+        }
+
+        const updateResult = await collection.updateOne(
+            { _id: new ObjectId(_id) },
+            { $set: req.body }
+        );
+        if (updateResult.matchedCount > 0) {
+            res.status(200).json({
+                message: 'Data updated successfully',
+                modifiedCount: updateResult.modifiedCount,
+            });
+        } else {
+            res.status(404).json({ error: 'Data not found' });
+        }
+    } catch (error) {
+        res.status(400).json({ error: 'Invalid JSON' });
+    }
+});
+
 // Handling OPTIONS request for CORS
 app.options('*', (req, res) => {
     res.header('Access-Control-Allow-Origin', '*');
