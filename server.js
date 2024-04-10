@@ -9,6 +9,17 @@ const app = express();
 const port = 3000;
 
 app.use(bodyParser.json());
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'all');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', true);
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
 
 async function connectToDatabase() {
     const uri = process.env.DB_URI;
@@ -88,12 +99,12 @@ app.patch('/updateData/:id', async (req, res) => {
 });
 
 // Handling OPTIONS request for CORS
-app.options('*', (req, res) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.status(200).send();
-});
+// app.options('*', (req, res) => {
+//     res.header('Access-Control-Allow-Origin', 'https://miriaml1.sg-host.com');
+//     res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
+//     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+//     res.status(200).send();
+// });
 
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}/`);
